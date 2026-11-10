@@ -12,6 +12,13 @@ jobs:
         with: {distribution: temurin, java-version: 17}
       - run: npm install
       - run: npx cap add android
+      - run: |
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            cp icon.png android/app/src/main/res/mipmap-$d/ic_launcher.png
+            cp icon.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png
+            cp icon.png android/app/src/main/res/mipmap-$d/ic_launcher_foreground.png
+          done
       - run: npx cap sync android
       - run: cd android && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
