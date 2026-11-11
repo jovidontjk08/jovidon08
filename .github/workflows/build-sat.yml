@@ -1,0 +1,32 @@
+name: Build Sat APK
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/build-sat.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p www && cp sat*3.html www/index.html
+      - run: |
+          echo '{"appId":"com.example.sat","appName":"Sat","webDir":"www"}' > capacitor.config.json
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 17}
+      - run: npm install
+      - run: npx cap add android
+      - run: |
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            cp icon-sat.png android/app/src/main/res/mipmap-$d/ic_launcher.png
+            cp icon-sat.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png
+            cp icon-sat.png android/app/src/main/res/mipmap-$d/ic_launcher_foreground.png
+          done
+      - run: npx cap sync android
+      - run: cd android && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sat-app
+          path: android/app/build/outputs/apk/debug/app-debug.apk
