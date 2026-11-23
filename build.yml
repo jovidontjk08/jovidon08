@@ -1,0 +1,33 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.7.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup
+        run: |
+          mkdir -p ~/.local/share/godot ~/.config
+          if [ "$HOME" != "/root" ]; then
+            cp -r /root/.local/share/godot/export_templates ~/.local/share/godot/ || true
+            cp -r /root/.config/godot ~/.config/ || true
+          fi
+          keytool -genkeypair -v -keystore /tmp/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+      - name: Import
+        run: godot --headless --import || true
+      - name: Export APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /tmp/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          mkdir -p build
+          godot --headless --verbose --export-debug "Android" build/dr-bokhtar.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dr-bokhtar-apk
+          path: build/dr-bokhtar.apk
