@@ -1,0 +1,53 @@
+name: Build Lugat APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Create Android app
+        run: |
+          mkdir -p lugat-app/www
+          cp lugat.html lugat-app/www/index.html
+          cd lugat-app
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor-community/speech-recognition
+          npx cap init "English Lugat" com.jovidon.englishlugat --web-dir www
+          npx cap add android
+          npx cap sync android
+
+      - name: Add microphone permission
+        run: |
+          python3 - <<'PYEOF'
+          p = "lugat-app/android/app/src/main/AndroidManifest.xml"
+          s = open(p, encoding="utf-8").read()
+          if "RECORD_AUDIO" not in s:
+              s = s.replace("<application", '<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <application', 1)
+          if "<queries>" not in s:
+              s = s.replace("</manifest>", '    <queries>\n        <intent>\n            <action android:name="android.speech.RecognitionService" />\n        </intent>\n    </queries>\n</manifest>')
+          open(p, "w", encoding="utf-8").write(s)
+          PYEOF
+
+      - name: Build debug APK
+        run: |
+          cd lugat-app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: English-Lugat-APK
+          path: lugat-app/android/app/build/outputs/apk/debug/app-debug.apk
